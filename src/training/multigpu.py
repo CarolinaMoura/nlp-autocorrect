@@ -1,4 +1,5 @@
 import pickle
+import datasets
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -105,17 +106,13 @@ class AutoCorrectionDataset(Dataset):
 def load_dataset():
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
 
-    with open('data/annotated_data.pickle', 'rb') as file:
-        annotated_data = pickle.load(file)
+    annotated_data = datasets.load_dataset("carolmou/random-sentences")["train"]
         
     wrong = annotated_data['wrong_text']
     correct = annotated_data['correct_text']
 
-    delimiter=int(0.8 * len(annotated_data))
 
-    train_data = [tup for tup in zip(wrong[:delimiter], correct[:delimiter])]
-
-    # test_data = [tup for tup in zip(wrong[delimiter:], correct[delimiter:])]
+    train_data = [tup for tup in zip(wrong, correct)]
 
     train_dataset = AutoCorrectionDataset(train_data, tokenizer, 128)
 
@@ -124,7 +121,8 @@ def load_dataset():
 
 def load_train_objs():
     dataset = load_dataset()
-    model = BartForConditionalGeneration.from_pretrained('fine_tuned_bart_autocorrection_2')
+    model = BartForConditionalGeneration.from_pretrained('facebook/bart-base')
+    model.load_state_dict(torch.load("checkpoint.pt"))
     optimizer = AdamW(model.parameters(), lr=1e-5)
     return dataset,model, optimizer
 
